@@ -24,54 +24,78 @@ double r_prime(double *vars)
     return k * vars[2];
 }
 
-void step(double *vars, double step_size)
+void step(double *vars, double (*functions[])(double *), int m, double step_size)
 {
+    int i;
     double half_h = step_size / 2.0;
     double sixth_h = step_size / 6.0;
-    double params[4];
+    double params[m + 1], a[m], b[m], c[m], d[m];
 
-    double a_1 = s_prime(vars);
-    double b_1 = i_prime(vars);
-    double c_1 = r_prime(vars);
+    // A
+    for (i = 0; i < m; i++)
+    {
+        a[i] = functions[i](vars);
+    }
 
+    // B
     params[0] = vars[0] + half_h;
-    params[1] = vars[1] + half_h * a_1;
-    params[2] = vars[2] + half_h * b_1;
-    params[3] = vars[3] + half_h * c_1;
-    double a_2 = s_prime(params);
-    double b_2 = i_prime(params);
-    double c_2 = r_prime(params);
+    for (i = 0; i < m; i++)
+    {
+        params[i + 1] = vars[i + 1] + half_h * a[i];
+    }
+    for (i = 0; i < m; i++)
+    {
+        b[i] = functions[i](params);
+    }
 
+    // C
     params[0] = vars[0] + half_h; // redundant
-    params[1] = vars[1] + half_h * a_2;
-    params[2] = vars[2] + half_h * b_2;
-    params[3] = vars[3] + half_h * c_2;
-    double a_3 = s_prime(params);
-    double b_3 = i_prime(params);
-    double c_3 = r_prime(params);
+    for (i = 0; i < m; i++)
+    {
+        params[i + 1] = vars[i + 1] + half_h * b[i];
+    }
+    for (i = 0; i < m; i++)
+    {
+        c[i] = functions[i](params);
+    }
 
+    // D
     params[0] = vars[0] + step_size;
-    params[1] = vars[1] + step_size * a_3;
-    params[2] = vars[2] + step_size * b_3;
-    params[3] = vars[3] + step_size * c_3;
-    double a_4 = s_prime(params);
-    double b_4 = i_prime(params);
-    double c_4 = r_prime(params);
+    for (i = 0; i < m; i++)
+    {
+        params[i + 1] = vars[i + 1] + step_size * c[i];
+    }
+    for (i = 0; i < m; i++)
+    {
+        d[i] = functions[i](params);
+    }
 
+    // Final
     vars[0] = vars[0] + step_size; // redundant
-    vars[1] = vars[1] + sixth_h * (a_1 + 2 * a_2 + 2 * a_3 + a_4);
-    vars[2] = vars[2] + sixth_h * (b_1 + 2 * b_2 + 2 * b_3 + b_4);
-    vars[3] = vars[3] + sixth_h * (c_1 + 2 * c_2 + 2 * c_3 + c_4);
+    for (i = 0; i < m; i++)
+    {
+        vars[i + 1] = vars[i + 1] + sixth_h * (a[i] + 2 * b[i] + 2 * c[i] + d[i]);
+    }
 }
 
-void print_csv(int n, double *vars)
+void print_csv(int n, double *vars, int m)
 {
-    printf("%d,%f,%f,%f,%f\n", n, vars[0], vars[1], vars[2], vars[3]);
+    printf("%d,%f", n, vars[0]);
+    for (int i = 0; i < m; i++)
+    {
+        printf(",%f", vars[i + 1]);
+    }
+    printf("\n");
 }
 
-void print_display(int n, double *vars)
+void print_display(int n, double *vars, int m)
 {
-    printf("%d\t%f\t%f\t%f\t%f\n", n, vars[0], vars[1], vars[2], vars[3]);
+    printf("%d\t%f", n, vars[0]);
+    for (int i = 0; i < m; i++)
+    {
+        printf("\t%f", vars[i + 1]);
+    }
+    printf("\n");
 }
 
 int main()
@@ -79,17 +103,24 @@ int main()
     double step_size = 0.01;
     int n = 0;
 
+    int m = 3;
+
     // initial conditions
-    double vars[4];
+    double vars[m + 1];
     vars[0] = 0;   // t (time)
     vars[1] = 0.9; // s (susceptible)
     vars[2] = 0.1; // i (infected)
     vars[3] = 0;   // r (recovered)
 
+    double (*functions[m])(double *);
+    functions[0] = &s_prime;
+    functions[1] = &i_prime;
+    functions[2] = &r_prime;
+
     do
     {
-        print_csv(n, vars);
-        step(vars, step_size);
+        print_display(n, vars, m);
+        step(vars, functions, m, step_size);
         n++;
     } while (n < 500);
 }
